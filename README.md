@@ -1,1 +1,1 @@
-# GO WebServer
+# Go Chat
