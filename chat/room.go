@@ -1,9 +1,11 @@
 package main
 
 import (
-	"github.com/gorilla/websocket"
+	"chat/trace"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -21,6 +23,8 @@ type room struct {
 	leave chan *client
 	//
 	clients map[*client]bool
+	//
+	tracer trace.Tracer
 }
 
 var upgrader = &websocket.Upgrader{
@@ -33,17 +37,21 @@ func (r *room) run() {
 		select {
 		case client := <-r.join:
 			r.clients[client] = true
+			r.tracer.Trace("New client joined")
 		case client := <-r.leave:
 			delete(r.clients, client)
 			close(client.send)
+			r.tracer.Trace("Client left")
 		case msg := <-r.forward:
 			for client := range r.clients {
 				select {
 				case client.send <- msg:
 					// send the message
+					r.tracer.Trace(" -- sent to client")
 				default:
 					delete(r.clients, client)
 					close(client.send)
+					r.tracer.Trace(" -- failed to send, cleaned up client")
 				}
 			}
 		}
