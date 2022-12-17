@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/gomniauth/providers/facebook"
 	"github.com/stretchr/gomniauth/providers/github"
 	"github.com/stretchr/gomniauth/providers/google"
+	"github.com/stretchr/objx"
 )
 
 type templateHandler struct {
@@ -28,8 +29,15 @@ func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// template.Must: returning (*Template, error) and panics if the error is non-nil.
 		t.templ = template.Must(template.ParseFiles(filepath.Join("templates", t.filename)))
 	})
+	data := map[string]interface{}{
+		"Host": r.Host,
+	}
+
+	if authCookie, err := r.Cookie("auth"); err == nil {
+		data["UserData"] = objx.MustFromBase64(authCookie.Value)
+	}
 	// Execute: applies a parsed template to the specified data object
-	t.templ.Execute(w, r)
+	t.templ.Execute(w, data)
 }
 
 func main() {
@@ -48,7 +56,6 @@ func main() {
 	var addr = flag.String("addr", ":8080", "The addr of the application.")
 	flag.Parse()
 
-	// gomniauth.SetSecurityKey("")
 	gomniauth.SetSecurityKey(os.Getenv("SECURITY_KEY"))
 	gomniauth.WithProviders(
 		google.New(google_client_id, google_secret, "http://"+host+":"+port+"/auth/callback/google"),
