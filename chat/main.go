@@ -4,9 +4,16 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"text/template"
+
+	"github.com/joho/godotenv"
+	"github.com/stretchr/gomniauth"
+	"github.com/stretchr/gomniauth/providers/facebook"
+	"github.com/stretchr/gomniauth/providers/github"
+	"github.com/stretchr/gomniauth/providers/google"
 )
 
 type templateHandler struct {
@@ -26,15 +33,35 @@ func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// loading .env file
+	err := godotenv.Load(".env")
+	if err != nil {
+		panic("Error loading .env file")
+	}
+	host := os.Getenv("HOST_ADDR")
+	port := os.Getenv("HOST_PORT")
+	google_client_id := os.Getenv("GOOGLE_AUTH_CLIENT_ID")
+	google_secret := os.Getenv("GOOGLE_AUTH_SECRET")
+
 	// command-line arguments
 	// address
 	var addr = flag.String("addr", ":8080", "The addr of the application.")
 	flag.Parse()
 
+	// gomniauth.SetSecurityKey("")
+	gomniauth.SetSecurityKey(os.Getenv("SECURITY_KEY"))
+	gomniauth.WithProviders(
+		google.New(google_client_id, google_secret, "http://"+host+":"+port+"/auth/callback/google"),
+		github.New(google_client_id, google_secret, "http://"+host+":"+port+"/auth/callback/facebook"),
+		facebook.New(google_client_id, google_secret, "http://"+host+":"+port+"/auth/callback/github"),
+	)
+
 	r := newRoom()
 	// r.tracer = trace.New(os.Stdout)
 	// router
-	http.Handle("/", &templateHandler{filename: "chat.html"})
+	http.Handle("/chat", MustAuth(&templateHandler{filename: "chat.html"}))
+	http.Handle("/login", &templateHandler{filename: "login.html"})
+	http.HandleFunc("/auth/", loginHandler)
 	http.Handle("/room", r)
 
 	// goroutine
