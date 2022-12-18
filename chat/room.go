@@ -13,11 +13,11 @@ type room struct {
 	// forward is a channel that holds incoming messages
 	// that should be forwarded to the other clients
 	forward chan *message
-	// room to join
+	//
 	join chan *client
-	// leave room
+	//
 	leave chan *client
-	// all clients in the room
+	//
 	clients map[*client]bool
 	//
 	tracer trace.Tracer
@@ -26,16 +26,22 @@ type room struct {
 // newRoom makes a new room that is ready to go
 func newRoom() *room {
 	return &room{
+		// create forward channel
 		forward: make(chan *message),
-		join:    make(chan *client),
-		leave:   make(chan *client),
+		// create join channel
+		join: make(chan *client),
+		// create leave channel
+		leave: make(chan *client),
+		// create clients channel
 		clients: make(map[*client]bool),
 		tracer:  trace.Off(),
 	}
 }
 
 func (r *room) run() {
+	// infinite loop
 	for {
+		// select statement: select randomly if multiple matching cases exist
 		select {
 		case client := <-r.join:
 			r.clients[client] = true
@@ -44,7 +50,6 @@ func (r *room) run() {
 			delete(r.clients, client)
 			close(client.send)
 			r.tracer.Trace("Client left")
-			log.Print("Client left")
 		case msg := <-r.forward:
 			r.tracer.Trace("Message received: ", msg.Message)
 			for client := range r.clients {
@@ -73,19 +78,23 @@ var upgrader = &websocket.Upgrader{
 }
 
 func (r *room) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	//
+	// a room acts as a handler
+
+	// upgrader.Upgrade method recieves the socket
 	socket, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		log.Fatal("ServeHTTP:", err)
 		return
 	}
 
+	// auth check
 	authCookie, err := req.Cookie("auth")
 	if err != nil {
 		log.Fatal("Failed to get auth cookie:", err)
 		return
 	}
 
+	// create client
 	client := &client{
 		socket:   socket,
 		send:     make(chan *message, messageBufferSize), // message objects are send/recieved
@@ -93,9 +102,11 @@ func (r *room) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		userData: objx.MustFromBase64(authCookie.Value), // decode
 	}
 
-	// ??
+	// pass it into the join channel
 	r.join <- client
 	defer func() { r.leave <- client }()
+	// run the method in different thereads
 	go client.write()
+	// block operations and close
 	client.read()
 }

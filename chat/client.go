@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -18,26 +17,26 @@ type client struct {
 	userData map[string]interface{}
 }
 
-func (c *client) read() {
-	log.Println("client.read()")
-	for {
-		var msg *message
-		if err := c.socket.ReadJSON(&msg); err == nil {
-			msg.When = time.Now()
-			msg.Name = c.userData["name"].(string)
-			// log.Printf("message: %s by %s", msg.Message, msg.Name)
-			c.room.forward <- msg // send msg to room.forward
-		} else {
+func (c *client) write() {
+	for msg := range c.send {
+		if err := c.socket.WriteJSON(msg); err != nil {
 			break
 		}
 	}
 	c.socket.Close()
 }
 
-func (c *client) write() {
-	// log.Println("client.write()")
-	for msg := range c.send {
-		if err := c.socket.WriteJSON(msg); err != nil {
+func (c *client) read() {
+	// read method allows client to read from the socket.ReadJSON
+	for {
+		var msg *message
+		if err := c.socket.ReadJSON(&msg); err == nil {
+			msg.When = time.Now()
+			msg.Name = c.userData["name"].(string)
+			// send recieved msg to forward channel
+			c.room.forward <- msg
+		} else {
+			// close socket
 			break
 		}
 	}
