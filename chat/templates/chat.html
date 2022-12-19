@@ -1,7 +1,20 @@
 <html>
     <head>
         <title>Chat</title>
+        <link
+            rel="stylesheet"
+            href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css"
+        />
         <style>
+            ul#messages {
+                list-style: none;
+            }
+            ul#messages li {
+                margin-bottom: 2px;
+            }
+            ul#messages li img {
+                margin-right: 10px;
+            }
             input {
                 display: block;
             }
@@ -11,14 +24,23 @@
         </style>
     </head>
     <body>
-        <ul id="messages"></ul>
-        <form id="chatbox">
-            {{.UserData.name}}:<br />
-            <textarea></textarea>
-            <input type="submit" value="Send" />
-            or <a href="/logout">sign out</a>
-        </form>
-
+        <div clas="container">
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <ul id="messages"></ul>
+                </div>
+            </div>
+            <form id="chatbox" role="form">
+                <div class="form-group">
+                    <label for="message">
+                        Send a message as {{.UserData.name}}
+                    </label>
+                    or <a href="/logout"> Sign out </a>
+                    <textarea id="message" class="form-control"></textarea>
+                </div>
+                <input type="submit" value="Send" class="btn btn-default" />
+            </form>
+        </div>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
         <script>
             $(function () {
@@ -48,6 +70,7 @@
                         messages.append(
                             $("<li>").append(
                                 $("<img>")
+                                    .attr("title", msg.Name)
                                     .css({
                                         width: 50,
                                         verticalAlign: "middle",
